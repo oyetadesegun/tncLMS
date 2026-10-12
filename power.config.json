@@ -1,0 +1,141 @@
+{
+  "version": "1.0",
+  "appId": null,
+  "appDisplayName": "Learning Assessment Hub",
+  "region": "prod",
+  "appType": "CodeApp",
+  "environmentId": "61b056dc-511b-e60b-a53e-238df8bf6f40",
+  "description": " ",
+  "buildPath": "./dist",
+  "buildEntryPoint": "index.html",
+  "localAppUrl": "http://localhost:3000",
+  "logoPath": "Default",
+  "connectionReferences": {},
+  "databaseReferences": {
+    "default.cds": {
+      "dataSources": {
+        "users": {
+          "entitySetName": "jwell_users",
+          "logicalName": "jwell_user",
+          "isHidden": false
+        },
+        "answeroptions": {
+          "entitySetName": "jwell_answeroptions",
+          "logicalName": "jwell_answeroption",
+          "isHidden": false
+        },
+        "assignments": {
+          "entitySetName": "jwell_assignments",
+          "logicalName": "jwell_assignment",
+          "isHidden": false
+        },
+        "attempts": {
+          "entitySetName": "jwell_attempts",
+          "logicalName": "jwell_attempt",
+          "isHidden": false
+        },
+        "attemptanswers": {
+          "entitySetName": "jwell_attemptanswers",
+          "logicalName": "jwell_attemptanswer",
+          "isHidden": false
+        },
+        "auditlogs": {
+          "entitySetName": "jwell_auditlogs",
+          "logicalName": "jwell_auditlog",
+          "isHidden": false
+        },
+        "badges": {
+          "entitySetName": "jwell_badges",
+          "logicalName": "jwell_badge",
+          "isHidden": false
+        },
+        "certificates": {
+          "entitySetName": "jwell_certificates",
+          "logicalName": "jwell_certificate",
+          "isHidden": false
+        },
+        "directories": {
+          "entitySetName": "jwell_directories",
+          "logicalName": "jwell_directory",
+          "isHidden": false
+        },
+        "groups": {
+          "entitySetName": "jwell_groups",
+          "logicalName": "jwell_group",
+          "isHidden": false
+        },
+        "groupmembers": {
+          "entitySetName": "jwell_groupmembers",
+          "logicalName": "jwell_groupmember",
+          "isHidden": false
+        },
+        "lms_quizdrawrules": {
+          "entitySetName": "jwell_lms_quizdrawrules",
+          "logicalName": "jwell_lms_quizdrawrule",
+          "isHidden": false
+        },
+        "lms_quizquestions": {
+          "entitySetName": "jwell_lms_quizquestions",
+          "logicalName": "jwell_lms_quizquestion",
+          "isHidden": false
+        },
+        "lms_quizversions": {
+          "entitySetName": "jwell_lms_quizversions",
+          "logicalName": "jwell_lms_quizversion",
+          "isHidden": false
+        },
+        "members": {
+          "entitySetName": "jwell_members",
+          "logicalName": "jwell_member",
+          "isHidden": false
+        },
+        "memberbadges": {
+          "entitySetName": "jwell_memberbadges",
+          "logicalName": "jwell_memberbadge",
+          "isHidden": false
+        },
+        "organisations": {
+          "entitySetName": "jwell_organisations",
+          "logicalName": "jwell_organisation",
+          "isHidden": false
+        },
+        "pointsledgers": {
+          "entitySetName": "jwell_pointsledgers",
+          "logicalName": "jwell_pointsledger",
+          "isHidden": false
+        },
+        "questions": {
+          "entitySetName": "jwell_questions",
+          "logicalName": "jwell_question",
+          "isHidden": false
+        },
+        "quizs": {
+          "entitySetName": "jwell_quizs",
+          "logicalName": "jwell_quiz",
+          "isHidden": false
+        },
+        "roleassignments": {
+          "entitySetName": "jwell_roleassignments",
+          "logicalName": "jwell_roleassignment",
+          "isHidden": false
+        },
+        "tags": {
+          "entitySetName": "jwell_tags",
+          "logicalName": "jwell_tag",
+          "isHidden": false
+        },
+        "tickets": {
+          "entitySetName": "jwell_tickets",
+          "logicalName": "jwell_ticket",
+          "isHidden": false
+        },
+        "trainings": {
+          "entitySetName": "jwell_trainings",
+          "logicalName": "jwell_training",
+          "isHidden": false
+        }
+      },
+      "environmentVariableName": ""
+    }
+  }
+}

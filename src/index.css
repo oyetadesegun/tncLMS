@@ -1,0 +1,127 @@
+:root {
+  /* Fonts */
+  --font-headline: "Plus Jakarta Sans", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Reference LMS Theme Colors */
+  --color-primary: #954a00;
+  --color-primary-container: #ff8300;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #5f2d00;
+  --color-primary-fixed: #ffdcc6;
+  --color-primary-fixed-dim: #ffb785;
+  --color-on-primary-fixed: #301400;
+  --color-on-primary-fixed-variant: #713700;
+
+  --color-secondary: #506072;
+  --color-secondary-container: #d3e4fa;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #566678;
+  --color-secondary-fixed: #d3e4fa;
+  --color-secondary-fixed-dim: #b7c8dd;
+  --color-on-secondary-fixed: #0c1d2c;
+  --color-on-secondary-fixed-variant: #384859;
+
+  --color-tertiary: #2b5bb5;
+  --color-tertiary-container: #7ba3ff;
+  --color-on-tertiary: #ffffff;
+  --color-on-tertiary-container: #003684;
+  --color-tertiary-fixed: #d9e2ff;
+  --color-tertiary-fixed-dim: #b0c6ff;
+  --color-on-tertiary-fixed: #001945;
+  --color-on-tertiary-fixed-variant: #00429c;
+
+  --color-surface: #f6faff;
+  --color-surface-dim: #d2dbe4;
+  --color-surface-bright: #f6faff;
+  --color-surface-variant: #dbe4ed;
+  --color-surface-tint: #954a00;
+  --color-surface-container: #e6eff8;
+  --color-surface-container-low: #ecf5fe;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-high: #e0e9f2;
+  --color-surface-container-highest: #dbe4ed;
+
+  --color-on-surface: #141d23;
+  --color-on-surface-variant: #574235;
+  --color-outline: #8b7263;
+  --color-outline-variant: #dec1af;
+  --color-inverse-surface: #293138;
+  --color-inverse-on-surface: #e9f2fb;
+  --color-inverse-primary: #ffb785;
+
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error: #ffffff;
+  --color-on-error-container: #93000a;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--color-surface);
+  color: var(--color-on-surface);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-headline);
+  letter-spacing: -0.015em;
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined' !important;
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  vertical-align: middle;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: all 0.15s ease-in-out;
+}
+
+input, select, textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+/* Print styling for certificates */
+@media print {
+  body {
+    background: transparent !important;
+  }
+  header, nav, aside, .no-print {
+    display: none !important;
+  }
+}
