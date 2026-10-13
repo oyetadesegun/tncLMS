@@ -1,10 +1,26 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { getContext } from "@microsoft/power-apps/app";
 
 interface CertificatePrintViewProps {
   onNavigate: (path: string) => void;
 }
 
 export const CertificatePrintView: React.FC<CertificatePrintViewProps> = ({ onNavigate }) => {
+  const [userName, setUserName] = useState<string>("");
+
+  // Fetch the logged-in user's name from Power Apps context
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const ctx = await getContext();
+        setUserName(ctx.user.fullName ?? "");
+      } catch {
+        // Local preview – name stays empty
+      }
+    }
+    loadUser();
+  }, []);
+
   const handlePrint = () => {
     window.print();
   };
@@ -103,7 +119,7 @@ export const CertificatePrintView: React.FC<CertificatePrintViewProps> = ({ onNa
             {/* Recipient Block */}
             <div className="cert-recipient-block">
               <p className="cert-intro-text">THIS IS TO CERTIFY THAT</p>
-              <div className="cert-recipient-name">Amaka Obi Okafor</div>
+              <div className="cert-recipient-name">{userName}</div>
               <p className="cert-recipient-role">Senior Field Specialist • Transcorp Power Operations (Lagos Substation)</p>
             </div>
 

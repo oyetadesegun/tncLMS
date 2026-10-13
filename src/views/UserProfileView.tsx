@@ -1,10 +1,26 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { getContext } from "@microsoft/power-apps/app";
 
 interface UserProfileViewProps {
   onNavigate: (path: string) => void;
 }
 
 export const UserProfileView: React.FC<UserProfileViewProps> = ({ onNavigate }) => {
+    const [userName, setUserName] = useState<string>("");
+
+      // Fetch the logged-in user's name from Power Apps context
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const ctx = await getContext();
+        setUserName(ctx.user.fullName ?? "");
+      } catch {
+        // Local preview – name stays empty
+      }
+    }
+    loadUser();
+  }, []);
+
   return (
     <div className="view-content-centered">
       {/* User Card */}
@@ -22,7 +38,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ onNavigate }) 
           <div className="profile-bio-col">
             <div className="profile-bio-header">
               <div>
-                <h1 className="profile-user-fullname">Amaka Obi Okafor</h1>
+                <h1 className="profile-user-fullname">{userName}</h1>
                 <p className="profile-user-title">Senior Field Specialist • Level 3 Operator</p>
               </div>
 

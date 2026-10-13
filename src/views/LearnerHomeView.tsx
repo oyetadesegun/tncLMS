@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, createContext } from "react";
 import { CoursesStore, type Course } from "../data/coursesStore";
+import { getContext } from "@microsoft/power-apps/app";
 
 interface LearnerHomeViewProps {
   onNavigate: (path: string) => void;
@@ -8,6 +9,25 @@ interface LearnerHomeViewProps {
 export const LearnerHomeView: React.FC<LearnerHomeViewProps> = ({ onNavigate }) => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [filter, setFilter] = useState<"all" | "urgent">("all");
+  const [userName, setUserName] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
+  const [role, setRole] = useState<string>("");
+
+  // Fetch the logged-in user's name from Power Apps context
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const ctx = await getContext();
+        const full = ctx.user.fullName ?? "";
+        setUserName(full);
+        setEmail(ctx.user.userPrincipalName ?? "");
+        // setRole(ctx.user.entityid.name);
+      } catch {
+        // Local preview – name stays empty
+      }
+    }
+    loadUser();
+  }, []);
 
   useEffect(() => {
     const unsub = CoursesStore.subscribe((c) => setCourses(c));
@@ -32,11 +52,18 @@ export const LearnerHomeView: React.FC<LearnerHomeViewProps> = ({ onNavigate }) 
         <div className="learner-greeting-row">
           <div>
             <h1 className="greeting-title">
-              Good morning, Amaka <span className="wave-icon">👋</span>
+              {(() => {
+                const hour = new Date().getHours();
+                const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+                const firstName = userName ? userName.split(" ")[0] : "there";
+                return `${greeting}, ${firstName}`;
+              })()} <span className="wave-icon">👋</span>
             </h1>
             <p className="greeting-subtitle">
               <span className="material-symbols-outlined icon-small text-primary">bolt</span>
-              <span>Transcorp Power Operations • Lagos Substation</span>
+              <span>{userName}</span>
+              <span>{email}</span>
+              {/* <span>Transcorp Power Operations • Lagos Substation</span> */}
             </p>
           </div>
           <div className="streak-pill">
@@ -110,7 +137,7 @@ export const LearnerHomeView: React.FC<LearnerHomeViewProps> = ({ onNavigate }) 
           </div>
           <div>
             <div className="shortcut-title">Profile</div>
-            <div className="shortcut-sub">Amaka Okafor</div>
+            <div className="shortcut-sub">{userName || "My Profile"}</div>
           </div>
         </button>
       </section>
