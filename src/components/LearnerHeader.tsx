@@ -7,7 +7,6 @@ interface LearnerHeaderProps {
   currentPath?: string;
   onNavigate: (path: string) => void;
   user?: AuthUser | null;
-  onLogout?: () => void;
 }
 
 export const LearnerHeader: React.FC<LearnerHeaderProps> = ({
@@ -16,7 +15,6 @@ export const LearnerHeader: React.FC<LearnerHeaderProps> = ({
   currentPath = "/",
   onNavigate,
   user,
-  onLogout,
 }) => {
   const initials = user?.avatar || "?";
 
@@ -65,18 +63,12 @@ export const LearnerHeader: React.FC<LearnerHeaderProps> = ({
             >
               Verify Credential
             </button>
-            <button
-              onClick={() => onNavigate("/profile")}
-              className={`nav-link-btn ${currentPath === "/profile" ? "active" : ""}`}
-            >
-              Profile
-            </button>
           </nav>
         </div>
 
         {/* Right Actions */}
         <div className="header-right-actions">
-          {/* Quick Page Directory Button */}
+          {/* Quick Page Directory */}
           {onOpenDirectory && (
             <button onClick={onOpenDirectory} className="pages-directory-btn">
               <span className="material-symbols-outlined icon-small">apps</span>
@@ -84,7 +76,7 @@ export const LearnerHeader: React.FC<LearnerHeaderProps> = ({
             </button>
           )}
 
-          {/* Switch to Admin — only visible for admin users */}
+          {/* Switch to Admin — only for admin users */}
           {user?.isAdmin && (
             <button onClick={() => onNavigate("/admin")} className="admin-switch-btn">
               <span className="material-symbols-outlined icon-small text-secondary">admin_panel_settings</span>
@@ -102,25 +94,14 @@ export const LearnerHeader: React.FC<LearnerHeaderProps> = ({
             <span className="notification-dot" />
           </button>
 
-          {/* User Button with logout */}
-          <div className="user-avatar-dropdown-wrapper">
-            <button
-              onClick={() => onNavigate("/profile")}
-              className="user-avatar-btn"
-              title={user?.fullName || "Profile"}
-            >
-              <span className="user-initials">{initials}</span>
-            </button>
-            {onLogout && (
-              <button
-                onClick={onLogout}
-                className="logout-inline-btn"
-                title="Sign out"
-              >
-                <span className="material-symbols-outlined icon-small">logout</span>
-              </button>
-            )}
-          </div>
+          {/* User Avatar */}
+          <button
+            onClick={() => onNavigate("/profile")}
+            className="user-avatar-btn"
+            title={user?.fullName || "Profile"}
+          >
+            <span className="user-initials">{initials}</span>
+          </button>
         </div>
       </div>
     </header>

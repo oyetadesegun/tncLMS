@@ -10,8 +10,7 @@ import { LearnerBottomNav } from "./components/LearnerBottomNav";
 import { AdminSidebar } from "./components/AdminSidebar";
 import { DirectoryModal } from "./components/DirectoryModal";
 
-// Views
-import { LoginView } from "./views/LoginView";
+// Views — Learner
 import { LearnerHomeView } from "./views/LearnerHomeView";
 import { QuizIntroView } from "./views/QuizIntroView";
 import { QuizTakeView } from "./views/QuizTakeView";
@@ -23,6 +22,8 @@ import { CertificatesWalletView } from "./views/CertificatesWalletView";
 import { CertificatePrintView } from "./views/CertificatePrintView";
 import { UserProfileView } from "./views/UserProfileView";
 import { VerifyPortalView } from "./views/VerifyPortalView";
+
+// Views — Admin
 import { AdminDashboardView } from "./views/AdminDashboardView";
 import { ExecutivePrecisionView } from "./views/ExecutivePrecisionView";
 import { QuizAnalyticsView } from "./views/QuizAnalyticsView";
@@ -40,7 +41,7 @@ import { Jwell_attemptsService } from "./generated/services/Jwell_attemptsServic
 import { Jwell_quizsService } from "./generated/services/Jwell_quizsService";
 import { Jwell_certificatesService } from "./generated/services/Jwell_certificatesService";
 
-// ─── Admin-only routes ──────────────────────────────────────────────────────
+// ─── Route sets ───────────────────────────────────────────────────────────────
 const ADMIN_ROUTES = new Set([
   "/admin",
   "/admin/courses",
@@ -57,16 +58,9 @@ const ADMIN_ROUTES = new Set([
   "/admin/settings",
 ]);
 
-// Super-Admin-only routes (HR Viewer and Learning Admin cannot access)
-const SUPER_ADMIN_ONLY_ROUTES = new Set([
-  "/admin/settings",
-]);
-
-// Public routes (no auth needed)
-const PUBLIC_ROUTES = new Set(["/verify"]);
-
+// ─── App inner (has access to AuthContext) ────────────────────────────────────
 function AppInner() {
-  const { user, isLoading, logout } = useAuth();
+  const { user, isLoading } = useAuth();
   const [currentPath, setCurrentPath] = useState<string>("/");
   const [isDirectoryOpen, setIsDirectoryOpen] = useState<boolean>(false);
   const [lastQuizResult, setLastQuizResult] = useState<{ score: number; passed: boolean } | null>(null);
@@ -74,25 +68,32 @@ function AppInner() {
   const cleanPath = currentPath.split("?")[0];
 
   const handleNavigate = (path: string) => {
-    // RBAC route guard
+    // RBAC guard — Learners cannot navigate to admin routes
     if (ADMIN_ROUTES.has(path)) {
-      if (!user) {
-        // Not logged in → redirect to login
-        setCurrentPath("/login");
-        return;
+      if (!user || user.role === "Learner") return;
+      // HR Viewer: read-only, block destructive/creator routes
+      if (user.role === "HR Viewer") {
+        const viewerBlocked = new Set([
+          "/assessments/create", "/assessments/create/rules",
+          "/quiz-builder", "/quiz-builder/audience",
+          "/question-bank", "/admin/settings",
+        ]);
+        if (viewerBlocked.has(path)) return;
       }
-      if (user.role === "Learner") {
-        // Learner trying to access admin → deny silently, keep them on home
-        return;
-      }
-      if (SUPER_ADMIN_ONLY_ROUTES.has(path) && !user.isSuperAdmin) {
-        // HR Viewer / HR Learning Admin trying to access super-admin-only page
-        if (user.role === "HR Viewer") return; // deny
-      }
+      // Settings only for Super Admin
+      if (path === "/admin/settings" && !user.isSuperAdmin) return;
     }
     setCurrentPath(path);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  // If user changes (admin role updated), re-evaluate current path
+  useEffect(() => {
+    if (isLoading || !user) return;
+    if (user.role === "Learner" && ADMIN_ROUTES.has(cleanPath)) {
+      setCurrentPath("/");
+    }
+  }, [user, isLoading]);
 
   const handleRecordAttempt = async (score: number, passed: boolean) => {
     setLastQuizResult({ score, passed });
@@ -106,7 +107,7 @@ function AppInner() {
     }
   };
 
-  // Preload Dataverse tables to confirm connectivity
+  // Preload Dataverse tables
   useEffect(() => {
     async function initDataverse() {
       try {
@@ -121,64 +122,38 @@ function AppInner() {
     initDataverse();
   }, []);
 
-  // Route guard effect — redirect unauthenticated users away from protected paths
-  useEffect(() => {
-    if (isLoading) return;
-    if (!user && !PUBLIC_ROUTES.has(cleanPath) && cleanPath !== "/login") {
-      setCurrentPath("/login");
-    }
-    // After login, redirect away from /login
-    if (user && cleanPath === "/login") {
-      setCurrentPath(user.isAdmin ? "/admin" : "/");
-    }
-    // Learner trying to land on admin route (e.g. from direct navigation or stale URL)
-    if (user && user.role === "Learner" && ADMIN_ROUTES.has(cleanPath)) {
-      setCurrentPath("/");
-    }
-  }, [isLoading, user, cleanPath]);
-
+  // Loading splash while resolving Power Apps context
   if (isLoading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100vh",
-          background: "var(--surface)",
-          flexDirection: "column",
-          gap: "1rem",
-        }}
-      >
-        <div className="login-spinner" style={{ width: "2rem", height: "2rem", borderWidth: "3px" }} />
-        <span className="text-secondary text-sm">Loading Transcorp LMS…</span>
+      <div className="app-loading-splash">
+        <div className="app-loading-brand">
+          <div className="brand-logo-letter">T</div>
+          <div>
+            <div className="brand-main-text">TRANSCORP</div>
+            <div className="brand-sub-text">Learning Assessment Hub</div>
+          </div>
+        </div>
+        <div className="app-loading-spinner" />
+        <p className="app-loading-label">Loading your learning environment…</p>
       </div>
     );
   }
 
-  // Show login page when unauthenticated
-  if (!user || cleanPath === "/login") {
-    return <LoginView onNavigate={handleNavigate} />;
-  }
-
-  // Public verify portal (accessible regardless of auth, but auth'd users stay logged in)
-  if (cleanPath === "/verify") {
-    return <VerifyPortalView onNavigate={handleNavigate} />;
-  }
-
   const isAdminRoute = ADMIN_ROUTES.has(cleanPath);
+
+  // Access denied — learner tried to reach admin
+  const showAccessDenied = isAdminRoute && (!user || user.role === "Learner");
 
   return (
     <div className="app-master-wrapper">
-      {/* Admin Layout vs Learner Layout */}
-      {isAdminRoute ? (
+      {isAdminRoute && !showAccessDenied ? (
+        /* ── Admin Layout ────────────────────────────────────────────────────── */
         <div className="admin-layout-wrapper">
           <AdminSidebar
             currentPath={cleanPath}
             onNavigate={handleNavigate}
             onOpenDirectory={() => setIsDirectoryOpen(true)}
             user={user}
-            onLogout={logout}
           />
 
           <main className="admin-main-viewport">
@@ -196,21 +171,25 @@ function AppInner() {
             {cleanPath === "/question-bank" && <QuestionBankView onNavigate={handleNavigate} />}
             {cleanPath === "/admin/people" && <AdminPeopleView onNavigate={handleNavigate} />}
             {cleanPath === "/admin/certificates" && <AdminCertificatesView onNavigate={handleNavigate} />}
-            {cleanPath === "/admin/settings" && user.isSuperAdmin && (
+            {cleanPath === "/admin/settings" && user?.isSuperAdmin && (
               <AdminSettingsView onNavigate={handleNavigate} />
             )}
-            {cleanPath === "/admin/settings" && !user.isSuperAdmin && (
+            {cleanPath === "/admin/settings" && user && !user.isSuperAdmin && (
               <div className="admin-view-content">
-                <div style={{ padding: "3rem", textAlign: "center" }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: "3rem", color: "var(--text-secondary)" }}>lock</span>
-                  <h2 style={{ marginTop: "1rem" }}>Access Restricted</h2>
+                <div className="access-denied-panel">
+                  <span className="material-symbols-outlined access-denied-icon">lock</span>
+                  <h2>Access Restricted</h2>
                   <p className="text-secondary">Only HR Super Admins can access Platform Settings & Role Management.</p>
+                  <button onClick={() => handleNavigate("/admin")} className="btn-primary-action" style={{ marginTop: "1.5rem" }}>
+                    Back to Dashboard
+                  </button>
                 </div>
               </div>
             )}
           </main>
         </div>
       ) : (
+        /* ── Learner Layout ──────────────────────────────────────────────────── */
         <>
           {cleanPath !== "/certificates/view" && (
             <LearnerHeader
@@ -219,7 +198,6 @@ function AppInner() {
               onOpenDirectory={() => setIsDirectoryOpen(true)}
               title="TRANSCORP"
               user={user}
-              onLogout={logout}
             />
           )}
 
@@ -246,6 +224,7 @@ function AppInner() {
             {cleanPath === "/certificates" && <CertificatesWalletView onNavigate={handleNavigate} />}
             {cleanPath === "/certificates/view" && <CertificatePrintView onNavigate={handleNavigate} />}
             {cleanPath === "/profile" && <UserProfileView onNavigate={handleNavigate} user={user} />}
+            {cleanPath === "/verify" && <VerifyPortalView onNavigate={handleNavigate} />}
           </main>
 
           {cleanPath !== "/certificates/view" && (
@@ -254,7 +233,7 @@ function AppInner() {
         </>
       )}
 
-      {/* Global 24 Pages Directory Modal */}
+      {/* Global Page Directory Modal */}
       <DirectoryModal
         isOpen={isDirectoryOpen}
         onClose={() => setIsDirectoryOpen(false)}

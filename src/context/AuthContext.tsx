@@ -1,14 +1,18 @@
 /**
- * AuthContext — Transcorp LMS Authentication & RBAC
+ * AuthContext — Transcorp LMS Power Apps Context RBAC
  *
- * Provides global user session management. On first load, if localStorage
- * has no session, the user is shown the LoginView.
+ * In Power Apps, the logged-in user comes automatically from the platform
+ * via `getContext()`. We resolve their email against the HRAdminStore to
+ * determine their role:
  *
- * Roles (derived from HRAdminStore):
  *   HR Super Admin   → full admin access + manage other admins
  *   HR Learning Admin → admin access, cannot manage HR roles
  *   HR Viewer        → read-only admin access
- *   Learner          → learner portal only (default for all 451 staff)
+ *   Learner          → learner portal only (all 451 staff default)
+ *
+ * For local development (when Power Apps context is unavailable) we fall
+ * back to segun.oyetade@transcorpgroup.com as the active user so the
+ * full admin experience is visible during development.
  */
 
 import React, {
@@ -16,13 +20,11 @@ import React, {
   useContext,
   useState,
   useEffect,
-  useCallback,
   type ReactNode,
 } from "react";
+import { getContext } from "@microsoft/power-apps/app";
 import { TRANSCORP_LEARNERS, type TranscorpLearner } from "../data/transcorpUsers";
 import { HRAdminStore, type HRAdmin } from "../data/hrAdminStore";
-
-const SESSION_KEY = "transcorp_lms_session_v1";
 
 export type LMSRole = HRAdmin["role"] | "Learner";
 
@@ -43,12 +45,11 @@ export interface AuthUser {
 interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** Resolve a TranscorpLearner + HRAdminStore role into a full AuthUser */
 function buildAuthUser(learner: TranscorpLearner): AuthUser {
   const admins = HRAdminStore.getAll();
   const adminRecord = admins.find(
@@ -68,88 +69,83 @@ function buildAuthUser(learner: TranscorpLearner): AuthUser {
   };
 }
 
-function loadSession(): AuthUser | null {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as AuthUser;
-    // Re-derive role from current HRAdminStore in case it changed
-    const learner = TRANSCORP_LEARNERS.find(
-      (l) => l.email.toLowerCase() === parsed.email.toLowerCase()
-    );
-    if (!learner) return null;
-    return buildAuthUser(learner);
-  } catch {
-    return null;
-  }
-}
-
-function persistSession(user: AuthUser | null) {
-  try {
-    if (user) {
-      localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    } else {
-      localStorage.removeItem(SESSION_KEY);
-    }
-  } catch {
-    // storage unavailable
-  }
-}
-
 /**
- * Simple password verification.
- * For the demo LMS (not yet live), all staff use their Employee ID
- * as the initial password. The Super Admin seed uses "Transcorp@2026".
+ * Local-dev fallback: segun.oyetade@transcorpgroup.com
+ * This user is the seeded HR Super Admin so all admin screens are visible
+ * during Power Apps local preview.
  */
-function verifyPassword(learner: TranscorpLearner, password: string): boolean {
-  // Super admin specific password
-  if (learner.email.toLowerCase() === "segun.oyetade@transcorpgroup.com") {
-    return password === "Transcorp@2026" || password === learner.id;
-  }
-  // All other staff: password == their employee ID (e.g. TRC-001)
-  return password === learner.id || password === "Transcorp@2026";
-}
+const DEV_FALLBACK_EMAIL = "segun.oyetade@transcorpgroup.com";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const session = loadSession();
-    setUser(session);
-    setIsLoading(false);
-  }, []);
+    async function resolveUser() {
+      let email = "";
+      let fullName = "";
 
-  const login = useCallback(
-    async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-      const trimmed = email.trim().toLowerCase();
+      try {
+        const ctx = await getContext();
+        email = ctx.user.userPrincipalName ?? "";
+        fullName = ctx.user.fullName ?? "";
+      } catch {
+        // Local preview — getContext() not available outside Power Apps
+        email = DEV_FALLBACK_EMAIL;
+        fullName = "Segun Oyetade";
+      }
+
+      if (!email) {
+        email = DEV_FALLBACK_EMAIL;
+        fullName = "Segun Oyetade";
+      }
+
+      // Find this user in the Transcorp directory
       const learner = TRANSCORP_LEARNERS.find(
-        (l) => l.email.toLowerCase() === trimmed
+        (l) => l.email.toLowerCase() === email.toLowerCase()
       );
 
-      if (!learner) {
-        return { success: false, error: "No Transcorp account found for this email address." };
+      if (learner) {
+        setUser(buildAuthUser(learner));
+      } else {
+        // User exists in Azure AD / Entra but not yet provisioned in the LMS directory
+        // Treat as a basic learner with the identity from context
+        const initials = fullName
+          .split(" ")
+          .filter(Boolean)
+          .map((n) => n[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase();
+
+        // Check if they're an admin anyway
+        const admins = HRAdminStore.getAll();
+        const adminRecord = admins.find(
+          (a) => a.email.toLowerCase() === email.toLowerCase()
+        );
+        const role: LMSRole = adminRecord?.role ?? "Learner";
+
+        setUser({
+          id: "UNK",
+          fullName: fullName || email.split("@")[0],
+          email,
+          subsidiary: "Transcorp Group",
+          department: "—",
+          avatar: initials || "?",
+          role,
+          isAdmin: role !== "Learner",
+          isSuperAdmin: role === "HR Super Admin",
+        });
       }
 
-      if (!verifyPassword(learner, password.trim())) {
-        return { success: false, error: "Incorrect password. Use your Employee ID or the default password." };
-      }
+      setIsLoading(false);
+    }
 
-      const authUser = buildAuthUser(learner);
-      setUser(authUser);
-      persistSession(authUser);
-      return { success: true };
-    },
-    []
-  );
-
-  const logout = useCallback(() => {
-    setUser(null);
-    persistSession(null);
+    resolveUser();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
