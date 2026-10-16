@@ -118,4 +118,4 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ onNavigate }) 
       </div>
     </div>
   );
-};
+}; 
