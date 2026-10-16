@@ -75,16 +75,7 @@ export const TRANSCORP_LEARNERS: TranscorpLearner[] = [
     "defaultRole": "Learner",
     "avatar": "AK",
     "department": "Strategy & Corporate Governance"
-  },
-  {
-    "id": "TRC-007",
-    "fullName": "Segun Oyetade",
-    "email": "segun.oyetade@transcorpgroup.com",
-    "subsidiary": "Transcorp Group HQ",
-    "defaultRole": "Learner",
-    "avatar": "SO",
-    "department": "Strategy & Corporate Governance"
-  },
+  },    
   {
     "id": "TRC-008",
     "fullName": "Daniel Ogbonna",
@@ -4080,8 +4071,27 @@ export const TRANSCORP_LEARNERS: TranscorpLearner[] = [
     "defaultRole": "Learner",
     "avatar": "SI",
     "department": "Generation & Plant Engineering"
+  },
+  {
+    "id": "TRC-007",
+    "fullName": "Segun Oyetade",
+    "email": "segun.oyetade@transcorpgroup.com",
+    "subsidiary": "Transcorp Group HQ",
+    "defaultRole": "Learner",
+    "avatar": "SO",
+    "department": "HR & People Operations"
+  },
+  {
+    "id": "TRC-AMAKA",
+    "fullName": "Amaka Okafor",
+    "email": "amaka.okafor@transcorpgroup.com",
+    "subsidiary": "Transcorp Group HQ",
+    "defaultRole": "Learner",
+    "avatar": "AO",
+    "department": "HR & People Operations"
   }
 ];
+
 
 export function searchLearners(query: string, subsidiaryFilter?: string): TranscorpLearner[] {
   const q = query.trim().toLowerCase();

@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { PAGES_DIRECTORY } from "../types/lms";
+import type { AuthUser } from "../context/AuthContext";
 
 interface DirectoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onNavigate: (path: string) => void;
+  user?: AuthUser | null;
 }
 
 export const DirectoryModal: React.FC<DirectoryModalProps> = ({
   isOpen,
   onClose,
   onNavigate,
+  user,
 }) => {
+  const isAdmin = user?.isAdmin ?? false;
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
@@ -24,14 +28,22 @@ export const DirectoryModal: React.FC<DirectoryModalProps> = ({
 
   if (!isOpen) return null;
 
-  const filtered = PAGES_DIRECTORY.filter(
+  // Filter pages based on role: Learners cannot see Admin or Assessment Builder pages
+  const accessiblePages = PAGES_DIRECTORY.filter((p) => {
+    if (!isAdmin) {
+      if (p.category === "Admin & Executive" || p.category === "Assessments & Builder") return false;
+    }
+    return true;
+  });
+
+  const filtered = accessiblePages.filter(
     (p) =>
       p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.desc.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const categories = Array.from(new Set(PAGES_DIRECTORY.map((p) => p.category)));
+  const categories = Array.from(new Set(accessiblePages.map((p) => p.category)));
 
   return (
     <div className="modal-backdrop" onClick={onClose}>

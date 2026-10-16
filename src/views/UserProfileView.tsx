@@ -1,25 +1,18 @@
-import React, { useState, useEffect } from "react";
-import { getContext } from "@microsoft/power-apps/app";
+import React from "react";
+import type { AuthUser } from "../context/AuthContext";
 
 interface UserProfileViewProps {
   onNavigate: (path: string) => void;
+  user?: AuthUser | null;
 }
 
-export const UserProfileView: React.FC<UserProfileViewProps> = ({ onNavigate }) => {
-    const [userName, setUserName] = useState<string>("");
-
-      // Fetch the logged-in user's name from Power Apps context
-  useEffect(() => {
-    async function loadUser() {
-      try {
-        const ctx = await getContext();
-        setUserName(ctx.user.fullName ?? "");
-      } catch {
-        // Local preview – name stays empty
-      }
-    }
-    loadUser();
-  }, []);
+export const UserProfileView: React.FC<UserProfileViewProps> = ({ onNavigate, user }) => {
+  const displayName = user?.fullName || "—";
+  const displayEmail = user?.email || "—";
+  const displaySubsidiary = user?.subsidiary || "—";
+  const displayDepartment = user?.department || "—";
+  const displayId = user?.id || "—";
+  const initials = user?.avatar || "?";
 
   return (
     <div className="view-content-centered">
@@ -30,7 +23,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ onNavigate }) 
         <div className="profile-card-content">
           {/* Avatar */}
           <div className="profile-avatar-wrap">
-            <div className="profile-avatar-initials">AO</div>
+            <div className="profile-avatar-initials">{initials}</div>
             <span className="profile-status-dot" title="Active">✓</span>
           </div>
 
@@ -38,8 +31,10 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ onNavigate }) 
           <div className="profile-bio-col">
             <div className="profile-bio-header">
               <div>
-                <h1 className="profile-user-fullname">{userName}</h1>
-                <p className="profile-user-title">Senior Field Specialist • Level 3 Operator</p>
+                <h1 className="profile-user-fullname">{displayName}</h1>
+                <p className="profile-user-title">
+                  {user?.role || "Learner"} • {displaySubsidiary}
+                </p>
               </div>
 
               <div className="profile-streak-badges">
@@ -54,11 +49,11 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ onNavigate }) 
             <div className="profile-metadata-grid">
               <div className="profile-meta-item">
                 <span className="material-symbols-outlined text-secondary icon-small">domain</span>
-                <span>Transcorp Power Operations • Lagos Substation</span>
+                <span>{displaySubsidiary} • {displayDepartment}</span>
               </div>
               <div className="profile-meta-item font-mono">
                 <span className="material-symbols-outlined text-secondary icon-small">mail</span>
-                <span>amaka.okafor@transcorp.com</span>
+                <span>{displayEmail}</span>
               </div>
               <div className="profile-meta-item">
                 <span className="material-symbols-outlined text-secondary icon-small">verified_user</span>
@@ -66,8 +61,14 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ onNavigate }) 
               </div>
               <div className="profile-meta-item">
                 <span className="material-symbols-outlined text-secondary icon-small">badge</span>
-                <span>Employee ID: TRC-ENG-0419</span>
+                <span>Employee ID: {displayId}</span>
               </div>
+              {user?.isAdmin && (
+                <div className="profile-meta-item">
+                  <span className="material-symbols-outlined text-amber icon-small">admin_panel_settings</span>
+                  <span className="font-bold" style={{ color: "var(--color-amber)" }}>{user.role}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -116,6 +117,38 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({ onNavigate }) 
           </div>
         </div>
       </div>
+
+      {/* Admin section — only visible to admins */}
+      {user?.isAdmin && (
+        <div className="profile-section-card">
+          <div className="profile-section-header">
+            <div>
+              <h2 className="section-card-title">Admin & HR Privileges</h2>
+              <p className="section-card-sub">Your current admin access level across the Transcorp LMS</p>
+            </div>
+            <button onClick={() => onNavigate("/admin")} className="btn-primary-action">
+              <span className="material-symbols-outlined icon-small">admin_panel_settings</span>
+              <span>Open Admin Hub</span>
+            </button>
+          </div>
+
+          <div className="profile-admin-role-display">
+            <div className={`role-matrix-badge ${user.isSuperAdmin ? "super" : user.role === "HR Learning Admin" ? "learning" : "viewer"}`} style={{ display: "inline-flex" }}>
+              <span className="material-symbols-outlined icon-small">
+                {user.isSuperAdmin ? "shield" : user.role === "HR Learning Admin" ? "school" : "visibility"}
+              </span>
+              {user.role}
+            </div>
+            <p className="text-secondary text-xs" style={{ marginTop: "0.5rem" }}>
+              {user.isSuperAdmin
+                ? "Full platform access including HR role management, SSO configuration, and all analytics."
+                : user.role === "HR Learning Admin"
+                ? "Can initiate courses, assign trainers, approve assessments, and view all analytics."
+                : "Read-only access to analytics and courses."}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
-}; 
+};

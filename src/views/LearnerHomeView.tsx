@@ -1,49 +1,36 @@
-import React, { useState, useEffect, createContext } from "react";
+import React, { useState, useEffect } from "react";
 import { CoursesStore, type Course } from "../data/coursesStore";
-import { getContext } from "@microsoft/power-apps/app";
+import type { AuthUser } from "../context/AuthContext";
 
 interface LearnerHomeViewProps {
   onNavigate: (path: string) => void;
+  user?: AuthUser | null;
 }
 
-export const LearnerHomeView: React.FC<LearnerHomeViewProps> = ({ onNavigate }) => {
+export const LearnerHomeView: React.FC<LearnerHomeViewProps> = ({ onNavigate, user }) => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [filter, setFilter] = useState<"all" | "urgent">("all");
-  const [userName, setUserName] = useState<string>("");
-  const [email, setEmail] = useState<string>("");
-  const [role, setRole] = useState<string>("");
-
-  // Fetch the logged-in user's name from Power Apps context
-  useEffect(() => {
-    async function loadUser() {
-      try {
-        const ctx = await getContext();
-        const full = ctx.user.fullName ?? "";
-        setUserName(full);
-        setEmail(ctx.user.userPrincipalName ?? "");
-        // setRole(ctx.user.entityid.name);
-      } catch {
-        // Local preview – name stays empty
-      }
-    }
-    loadUser();
-  }, []);
 
   useEffect(() => {
     const unsub = CoursesStore.subscribe((c) => setCourses(c));
     return unsub;
   }, []);
 
-  // Filter courses available to Amaka (Transcorp Power Operations):
-  // Either audienceScope === 'ALL' OR targetSubsidiary matches Power
-  const userSubsidiary = "Transcorp Power Plc";
+  // Filter courses available to this user based on their subsidiary
+  const userSubsidiary = user?.subsidiary || "Transcorp Group HQ";
+
   const availableCourses = courses.filter((c) => {
     if (c.audienceScope === "ALL") return true;
-    return c.targetSubsidiary.toLowerCase().includes("power") ||
-           c.targetSubsidiary.toLowerCase().includes("ughelli");
+    return c.targetSubsidiary.toLowerCase().includes(
+      userSubsidiary.toLowerCase().split(" ")[1] || userSubsidiary.toLowerCase()
+    );
   });
 
   const filteredCourses = filter === "urgent" ? availableCourses.slice(0, 2) : availableCourses;
+
+  const firstName = user?.fullName ? user.fullName.split(" ")[0] : "there";
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   return (
     <div className="view-content-centered">
@@ -52,18 +39,12 @@ export const LearnerHomeView: React.FC<LearnerHomeViewProps> = ({ onNavigate }) 
         <div className="learner-greeting-row">
           <div>
             <h1 className="greeting-title">
-              {(() => {
-                const hour = new Date().getHours();
-                const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-                const firstName = userName ? userName.split(" ")[0] : "there";
-                return `${greeting}, ${firstName}`;
-              })()} <span className="wave-icon">👋</span>
+              {greeting}, {firstName} <span className="wave-icon">👋</span>
             </h1>
             <p className="greeting-subtitle">
               <span className="material-symbols-outlined icon-small text-primary">bolt</span>
-              <span>{userName}</span>
-              <span>{email}</span>
-              {/* <span>Transcorp Power Operations • Lagos Substation</span> */}
+              <span>{user?.subsidiary || "Transcorp Group"}</span>
+              {user?.department && <span>• {user.department}</span>}
             </p>
           </div>
           <div className="streak-pill">
@@ -137,9 +118,22 @@ export const LearnerHomeView: React.FC<LearnerHomeViewProps> = ({ onNavigate }) 
           </div>
           <div>
             <div className="shortcut-title">Profile</div>
-            <div className="shortcut-sub">{userName || "My Profile"}</div>
+            <div className="shortcut-sub">{user?.fullName || "My Profile"}</div>
           </div>
         </button>
+
+        {/* Admin shortcut — only for admins */}
+        {user?.isAdmin && (
+          <button onClick={() => onNavigate("/admin")} className="shortcut-card">
+            <div className="shortcut-icon-box" style={{ background: "rgba(251,191,36,0.12)", color: "var(--color-amber)" }}>
+              <span className="material-symbols-outlined">admin_panel_settings</span>
+            </div>
+            <div>
+              <div className="shortcut-title">Admin Hub</div>
+              <div className="shortcut-sub">{user.role}</div>
+            </div>
+          </button>
+        )}
       </section>
 
       {/* Section: Assigned Courses & Assessments */}

@@ -1,10 +1,13 @@
 import React from "react";
+import type { AuthUser } from "../context/AuthContext";
 
 interface LearnerHeaderProps {
   onOpenDirectory?: () => void;
   title?: string;
   currentPath?: string;
   onNavigate: (path: string) => void;
+  user?: AuthUser | null;
+  onLogout?: () => void;
 }
 
 export const LearnerHeader: React.FC<LearnerHeaderProps> = ({
@@ -12,7 +15,11 @@ export const LearnerHeader: React.FC<LearnerHeaderProps> = ({
   title = "TRANSCORP",
   currentPath = "/",
   onNavigate,
+  user,
+  onLogout,
 }) => {
+  const initials = user?.avatar || "?";
+
   return (
     <header className="learner-header">
       <div className="header-inner">
@@ -77,11 +84,13 @@ export const LearnerHeader: React.FC<LearnerHeaderProps> = ({
             </button>
           )}
 
-          {/* Switch to Admin */}
-          <button onClick={() => onNavigate("/admin")} className="admin-switch-btn">
-            <span className="material-symbols-outlined icon-small text-secondary">admin_panel_settings</span>
-            <span>Admin</span>
-          </button>
+          {/* Switch to Admin — only visible for admin users */}
+          {user?.isAdmin && (
+            <button onClick={() => onNavigate("/admin")} className="admin-switch-btn">
+              <span className="material-symbols-outlined icon-small text-secondary">admin_panel_settings</span>
+              <span>Admin</span>
+            </button>
+          )}
 
           {/* Notifications */}
           <button
@@ -93,10 +102,25 @@ export const LearnerHeader: React.FC<LearnerHeaderProps> = ({
             <span className="notification-dot" />
           </button>
 
-          {/* User Button */}
-          <button onClick={() => onNavigate("/profile")} className="user-avatar-btn">
-            <span className="user-initials">AO</span>
-          </button>
+          {/* User Button with logout */}
+          <div className="user-avatar-dropdown-wrapper">
+            <button
+              onClick={() => onNavigate("/profile")}
+              className="user-avatar-btn"
+              title={user?.fullName || "Profile"}
+            >
+              <span className="user-initials">{initials}</span>
+            </button>
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="logout-inline-btn"
+                title="Sign out"
+              >
+                <span className="material-symbols-outlined icon-small">logout</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </header>
