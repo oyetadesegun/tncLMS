@@ -1,6 +1,7 @@
 import { Jwell_trainingsService } from "../generated/services/Jwell_trainingsService";
 import { TRANSCORP_LEARNERS, type TranscorpLearner } from "./transcorpUsers";
 import { NotificationService } from "./notificationService";
+import { lmsDataService } from "../services/lmsDataService";
 
 export interface CourseTrainer {
   id: string;
@@ -186,6 +187,14 @@ function loadInitialCourses(): Course[] {
   }
   return DEFAULT_COURSES;
 }
+
+// Background sync from cloud Dataverse
+lmsDataService.getCourses().then((cloudCourses) => {
+  if (cloudCourses && cloudCourses.length > 0) {
+    inMemoryCourses = cloudCourses;
+    persistAndNotify();
+  }
+}).catch(() => {});
 
 function persistAndNotify() {
   try {

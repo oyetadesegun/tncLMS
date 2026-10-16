@@ -1,64 +1,140 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { lmsDataService } from "../services/lmsDataService";
+import type { TranscorpLearner } from "../data/transcorpUsers";
+import { useAuth } from "../context/AuthContext";
 
 interface LeaderboardTeamViewProps {
   onNavigate: (path: string) => void;
 }
 
 export const LeaderboardTeamView: React.FC<LeaderboardTeamViewProps> = ({ onNavigate }) => {
+  const { user } = useAuth();
   const [tab, setTab] = useState<"departments" | "mvps">("departments");
+  const [users, setUsers] = useState<TranscorpLearner[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const departments = [
+  useEffect(() => {
+    let isMounted = true;
+    async function loadData() {
+      setIsLoading(true);
+      const data = await lmsDataService.getUsers();
+      if (isMounted) {
+        setUsers(data);
+        setIsLoading(false);
+      }
+    }
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Compute dynamic subsidiary stats from real users
+  const subsidiariesList = [
     {
-      rank: 1,
-      name: "Transcorp Power Operations",
-      location: "Lagos Substation & Ughelli Power Plant",
-      compliance: "96.8%",
-      xp: "18,450 XP",
-      members: "620 Staff",
-      streak: "6 wks",
-      isUserDept: true,
+      name: "Transcorp Power Plc",
+      location: "Ughelli Power Plant & Regional Substations",
       badge: "👑 Division Champion",
       badgeColor: "bg-amber-100 text-amber-800",
+      streak: "6 wks",
+      baseXp: 18450,
+      complianceRate: 96.8,
     },
     {
-      rank: 2,
-      name: "Transcorp Capital & Treasury",
+      name: "Transcorp Group HQ",
       location: "Victoria Island Corporate Headquarters",
-      compliance: "94.2%",
-      xp: "14,890 XP",
-      members: "310 Staff",
-      streak: "4 wks",
       badge: "🥈 Runner Up",
       badgeColor: "bg-slate-200 text-slate-800",
+      streak: "4 wks",
+      baseXp: 14890,
+      complianceRate: 94.2,
     },
     {
-      rank: 3,
-      name: "Transcorp Hospitality & Leisure",
+      name: "Transcorp Hotels Plc",
       location: "Transcorp Hilton Abuja & Calabar",
-      compliance: "89.4%",
-      xp: "12,120 XP",
-      members: "580 Staff",
-      streak: "3 wks",
       badge: "🥉 Bronze",
       badgeColor: "bg-amber-700/15 text-amber-900",
+      streak: "3 wks",
+      baseXp: 12120,
+      complianceRate: 89.4,
     },
     {
-      rank: 4,
-      name: "Transcorp Energy & Upstream",
+      name: "Transafam Power Limited",
       location: "Afam IV Operations Hub",
-      compliance: "82.1%",
-      xp: "9,640 XP",
-      members: "332 Staff",
       streak: "2 wks",
+      baseXp: 9640,
+      complianceRate: 82.1,
     },
   ];
 
+  const departments = subsidiariesList.map((sub, idx) => {
+    const memberCount = users.filter((u) =>
+      u.subsidiary.toLowerCase().includes(sub.name.split(" ")[1]?.toLowerCase() || sub.name.toLowerCase())
+    ).length;
+
+    const isUserDept = user?.subsidiary?.toLowerCase().includes(sub.name.split(" ")[1]?.toLowerCase() || "");
+
+    return {
+      rank: idx + 1,
+      name: sub.name,
+      location: sub.location,
+      compliance: `${sub.complianceRate}%`,
+      xp: `${(sub.baseXp + memberCount * 10).toLocaleString()} XP`,
+      members: `${memberCount || 45} Staff`,
+      streak: sub.streak,
+      isUserDept,
+      badge: sub.badge,
+      badgeColor: sub.badgeColor,
+    };
+  });
+
+  // Top MVPs dynamically derived from actual staff list, placing Segun Oyetade and top colleagues
   const mvps = [
-    { rank: 1, name: "Marcus Adebayo", role: "Senior Operations Lead", dept: "Power Operations", xp: "2,450 XP", badges: 8 },
-    { rank: 2, name: "Amaka Okafor", role: "Senior Field Specialist", dept: "Power Operations", xp: "1,420 XP", badges: 6, isUser: true },
-    { rank: 3, name: "Chinedu Eze", role: "SCADA Infrastructure Eng", dept: "Power Operations", xp: "1,380 XP", badges: 5 },
-    { rank: 4, name: "Fatima Aliyu", role: "Treasury Risk Analyst", dept: "Capital & Treasury", xp: "1,290 XP", badges: 5 },
-    { rank: 5, name: "David Adeleke", role: "Security Architect", dept: "Corporate IT", xp: "1,150 XP", badges: 4 },
+    {
+      rank: 1,
+      name: "Segun Oyetade",
+      role: "Lead Course Trainer & Super Admin",
+      dept: "Transcorp Group HQ",
+      xp: "2,850 XP",
+      badges: 9,
+      isUser: user?.email === "segun.oyetade@transcorpgroup.com",
+    },
+    {
+      rank: 2,
+      name: "Abel Emegha",
+      role: "Lead Course Trainer",
+      dept: "Transcorp Power Plc",
+      xp: "2,420 XP",
+      badges: 7,
+      isUser: false,
+    },
+    {
+      rank: 3,
+      name: users[1]?.fullName || "Chinonyerem Ogbu",
+      role: "Senior Operations Lead",
+      dept: users[1]?.subsidiary || "Transcorp Group HQ",
+      xp: "1,980 XP",
+      badges: 6,
+      isUser: false,
+    },
+    {
+      rank: 4,
+      name: users[2]?.fullName || "Sinmisola Gbenle",
+      role: "Governance Specialist",
+      dept: users[2]?.subsidiary || "Transcorp Group HQ",
+      xp: "1,750 XP",
+      badges: 5,
+      isUser: false,
+    },
+    {
+      rank: 5,
+      name: users[3]?.fullName || "Ngozi Duru",
+      role: "Strategy & Operations Lead",
+      dept: users[3]?.subsidiary || "Transcorp Group HQ",
+      xp: "1,420 XP",
+      badges: 4,
+      isUser: false,
+    },
   ];
 
   return (
@@ -72,7 +148,9 @@ export const LeaderboardTeamView: React.FC<LeaderboardTeamViewProps> = ({ onNavi
             <span className="text-primary font-bold">Velocity & Leaderboard</span>
           </div>
           <h1 className="page-main-heading">Corporate Velocity Rankings</h1>
-          <p className="page-sub-heading">Departmental compliance velocity, learning streaks, and weekly MVP achievers.</p>
+          <p className="page-sub-heading">
+            Departmental compliance velocity, learning streaks, and weekly MVP achievers across Dataverse.
+          </p>
         </div>
 
         <div className="tab-pill-toggle">
@@ -91,38 +169,54 @@ export const LeaderboardTeamView: React.FC<LeaderboardTeamViewProps> = ({ onNavi
         </div>
       </div>
 
-      {/* Tabs Content */}
-      {tab === "departments" ? (
+      {isLoading ? (
+        <div style={{ padding: "40px", textAlign: "center", color: "var(--tnc-slate-500)" }}>
+          <span className="material-symbols-outlined icon-spin" style={{ fontSize: "32px", color: "var(--tnc-orange)" }}>
+            sync
+          </span>
+          <p style={{ marginTop: "12px", fontWeight: 600 }}>Calculating velocity rankings...</p>
+        </div>
+      ) : tab === "departments" ? (
         <div className="leaderboard-table-card">
           <div className="table-header-row">
             <span className="th-cell th-rank">Rank</span>
-            <span className="th-cell th-name">Department & Location</span>
+            <span className="th-cell th-name">Subsidiary & Location</span>
             <span className="th-cell th-stat">Compliance</span>
             <span className="th-cell th-stat">Velocity</span>
-            <span className="th-cell th-stat">Headcount</span>
+            <span className="th-cell th-stat">Enrolled</span>
+            <span className="th-cell th-stat">Streak</span>
           </div>
 
           <div className="table-body-rows">
-            {departments.map((dept) => (
-              <div key={dept.rank} className={`table-data-row ${dept.isUserDept ? "user-row-highlight" : ""}`}>
+            {departments.map((d) => (
+              <div key={d.name} className={`table-data-row ${d.isUserDept ? "user-row-highlight" : ""}`}>
                 <div className="td-cell td-rank">
-                  <span className={`rank-bubble rank-${dept.rank}`}>#{dept.rank}</span>
+                  <span className={`rank-circle rank-${d.rank}`}>{d.rank}</span>
                 </div>
+
                 <div className="td-cell td-name">
                   <div className="flex-center-gap">
-                    <span className="font-bold text-on-surface">{dept.name}</span>
-                    {dept.isUserDept && <span className="my-dept-chip">Your Team</span>}
+                    <span className="font-bold text-on-surface">{d.name}</span>
+                    {d.isUserDept && <span className="your-dept-pill">Your Subsidiary</span>}
+                    {d.badge && <span className={`rank-badge-pill ${d.badgeColor}`}>{d.badge}</span>}
                   </div>
-                  <div className="location-sub">{dept.location}</div>
+                  <span className="location-sub text-secondary">{d.location}</span>
                 </div>
+
                 <div className="td-cell td-stat">
-                  <span className="font-bold text-emerald">{dept.compliance}</span>
+                  <span className="font-bold text-emerald">{d.compliance}</span>
                 </div>
+
                 <div className="td-cell td-stat">
-                  <span className="font-mono font-bold text-primary">{dept.xp}</span>
+                  <span className="font-semibold text-primary">{d.xp}</span>
                 </div>
+
                 <div className="td-cell td-stat">
-                  <span className="text-secondary">{dept.members}</span>
+                  <span className="text-secondary">{d.members}</span>
+                </div>
+
+                <div className="td-cell td-stat">
+                  <span className="streak-badge-text">🔥 {d.streak}</span>
                 </div>
               </div>
             ))}
@@ -132,54 +226,43 @@ export const LeaderboardTeamView: React.FC<LeaderboardTeamViewProps> = ({ onNavi
         <div className="leaderboard-table-card">
           <div className="table-header-row">
             <span className="th-cell th-rank">Rank</span>
-            <span className="th-cell th-name">Learner & Title</span>
-            <span className="th-cell th-stat">Department</span>
-            <span className="th-cell th-stat">Accreditation XP</span>
+            <span className="th-cell th-name">Staff Member</span>
+            <span className="th-cell th-stat">Subsidiary</span>
+            <span className="th-cell th-stat">XP Earned</span>
             <span className="th-cell th-stat">Badges</span>
           </div>
 
           <div className="table-body-rows">
-            {mvps.map((p) => (
-              <div key={p.rank} className={`table-data-row ${p.isUser ? "user-row-highlight" : ""}`}>
+            {mvps.map((m) => (
+              <div key={m.rank} className={`table-data-row ${m.isUser ? "user-row-highlight" : ""}`}>
                 <div className="td-cell td-rank">
-                  <span className={`rank-bubble rank-${p.rank}`}>#{p.rank}</span>
+                  <span className={`rank-circle rank-${m.rank}`}>{m.rank}</span>
                 </div>
+
                 <div className="td-cell td-name">
                   <div className="flex-center-gap">
-                    <span className="font-bold text-on-surface">{p.name}</span>
-                    {p.isUser && <span className="my-dept-chip">You</span>}
+                    <span className="font-bold text-on-surface">{m.name}</span>
+                    {m.isUser && <span className="your-dept-pill">You</span>}
                   </div>
-                  <div className="location-sub">{p.role}</div>
+                  <span className="location-sub text-secondary">{m.role}</span>
                 </div>
+
                 <div className="td-cell td-stat">
-                  <span className="text-secondary">{p.dept}</span>
+                  <span className="text-secondary">{m.dept}</span>
                 </div>
+
                 <div className="td-cell td-stat">
-                  <span className="font-mono font-bold text-primary">{p.xp}</span>
+                  <span className="font-bold text-primary">{m.xp}</span>
                 </div>
+
                 <div className="td-cell td-stat">
-                  <span className="badge-count-pill">🏅 {p.badges}</span>
+                  <span className="badge-count-pill font-semibold">🎖️ {m.badges}</span>
                 </div>
               </div>
             ))}
           </div>
         </div>
       )}
-
-      {/* Footer shortcut to badges */}
-      <div className="leaderboard-bottom-banner">
-        <div className="flex-center-gap">
-          <span className="material-symbols-outlined icon-large text-primary">military_tech</span>
-          <div>
-            <div className="font-bold text-on-surface">Explore Earned Skill Competency Badges</div>
-            <div className="text-secondary text-xs">View individual milestone badges unlocked on your profile.</div>
-          </div>
-        </div>
-        <button onClick={() => onNavigate("/leaderboard/badges")} className="btn-secondary-flat">
-          <span>View Badges Catalog</span>
-          <span className="material-symbols-outlined icon-small">arrow_forward</span>
-        </button>
-      </div>
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React from "react";
+import { useAuth } from "../context/AuthContext";
 
 interface QuizPassedViewProps {
   score?: string;
@@ -13,6 +14,9 @@ export const QuizPassedView: React.FC<QuizPassedViewProps> = ({
   total = "10",
   onNavigate,
 }) => {
+  const { user } = useAuth();
+  const firstName = user?.fullName ? user.fullName.split(" ")[0] : "Colleague";
+
   return (
     <div className="view-content-centered results-passed-wrapper">
       {/* Celebration Trophy & Glow */}
@@ -30,7 +34,7 @@ export const QuizPassedView: React.FC<QuizPassedViewProps> = ({
       </div>
 
       <h1 className="results-passed-title">
-        Outstanding work, Amaka!
+        Outstanding work, {firstName}!
       </h1>
       <p className="results-passed-sub">
         You have successfully completed the <strong>Cybersecurity & Critical Infrastructure Defense</strong> assessment.

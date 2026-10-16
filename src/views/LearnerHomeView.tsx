@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { CoursesStore, type Course } from "../data/coursesStore";
+import { lmsDataService } from "../services/lmsDataService";
 import type { AuthUser } from "../context/AuthContext";
 
 interface LearnerHomeViewProps {
@@ -9,12 +10,16 @@ interface LearnerHomeViewProps {
 
 export const LearnerHomeView: React.FC<LearnerHomeViewProps> = ({ onNavigate, user }) => {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [certCount, setCertCount] = useState<number>(1);
   const [filter, setFilter] = useState<"all" | "urgent">("all");
 
   useEffect(() => {
     const unsub = CoursesStore.subscribe((c) => setCourses(c));
+    lmsDataService.getCertificates(user?.email).then((certs) => {
+      if (certs) setCertCount(certs.length);
+    }).catch(() => {});
     return unsub;
-  }, []);
+  }, [user]);
 
   // Filter courses available to this user based on their subsidiary
   const userSubsidiary = user?.subsidiary || "Transcorp Group HQ";
@@ -108,7 +113,7 @@ export const LearnerHomeView: React.FC<LearnerHomeViewProps> = ({ onNavigate, us
           </div>
           <div>
             <div className="shortcut-title">Certificates</div>
-            <div className="shortcut-sub">3 Accredited</div>
+            <div className="shortcut-sub">{certCount} Accredited</div>
           </div>
         </button>
 

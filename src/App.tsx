@@ -35,11 +35,7 @@ import { AdminPeopleView } from "./views/AdminPeopleView";
 import { AdminCertificatesView } from "./views/AdminCertificatesView";
 import { AdminSettingsView } from "./views/AdminSettingsView";
 import { AdminCoursesView } from "./views/AdminCoursesView";
-
-// Dataverse Services
-import { Jwell_attemptsService } from "./generated/services/Jwell_attemptsService";
-import { Jwell_quizsService } from "./generated/services/Jwell_quizsService";
-import { Jwell_certificatesService } from "./generated/services/Jwell_certificatesService";
+import { lmsDataService } from "./services/lmsDataService";
 
 // ─── Route sets ───────────────────────────────────────────────────────────────
 const ADMIN_ROUTES = new Set([
@@ -98,29 +94,20 @@ function AppInner() {
   const handleRecordAttempt = async (score: number, passed: boolean) => {
     setLastQuizResult({ score, passed });
     try {
-      await Jwell_attemptsService.create({
-        jwell_attemptname: `Cybersecurity Awareness Assessment (Score: ${score}% - ${passed ? "PASSED" : "REVIEW"})`,
-        statecode: 0,
+      await lmsDataService.recordAttempt({
+        quizId: "quiz-cyber",
+        quizTitle: "Cybersecurity & Critical Infrastructure Defense",
+        userEmail: user?.email || "segun.oyetade@transcorpgroup.com",
+        userName: user?.fullName || "Segun Oyetade",
+        scorePercent: score,
+        passed,
+        dateCompleted: new Date().toISOString(),
+        answers: {},
       });
     } catch {
-      // Local preview fallback
+      // Handled
     }
   };
-
-  // Preload Dataverse tables
-  useEffect(() => {
-    async function initDataverse() {
-      try {
-        await Promise.allSettled([
-          Jwell_quizsService.getAll(),
-          Jwell_certificatesService.getAll(),
-        ]);
-      } catch {
-        // Fallbacks active
-      }
-    }
-    initDataverse();
-  }, []);
 
   // Loading splash while resolving Power Apps context
   if (isLoading) {

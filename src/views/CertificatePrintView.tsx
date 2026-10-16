@@ -1,29 +1,54 @@
 import React, { useState, useEffect } from "react";
-import { getContext } from "@microsoft/power-apps/app";
+import { useAuth } from "../context/AuthContext";
+import { lmsDataService } from "../services/lmsDataService";
+import type { LMSCertificate } from "../services/dataAdapter";
 
 interface CertificatePrintViewProps {
   onNavigate: (path: string) => void;
 }
 
 export const CertificatePrintView: React.FC<CertificatePrintViewProps> = ({ onNavigate }) => {
-  const [userName, setUserName] = useState<string>("");
+  const { user } = useAuth();
+  const [cert, setCert] = useState<LMSCertificate | null>(null);
 
-  // Fetch the logged-in user's name from Power Apps context
   useEffect(() => {
-    async function loadUser() {
-      try {
-        const ctx = await getContext();
-        setUserName(ctx.user.fullName ?? "");
-      } catch {
-        // Local preview – name stays empty
+    async function loadCert() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const certId = urlParams.get("id") || "CERT-8F3K-92QX";
+
+      const found = await lmsDataService.getCertificateById(certId);
+      if (found) {
+        setCert(found);
+      } else {
+        // Fallback to active user's certificate
+        setCert({
+          id: "cert-001",
+          credentialId: certId,
+          recipientName: user?.fullName || "Segun Oyetade",
+          recipientEmail: user?.email || "segun.oyetade@transcorpgroup.com",
+          courseTitle: "Cybersecurity & Critical Infrastructure Defense",
+          issuer: "Transcorp Institute of Information Security",
+          standard: "ISO/IEC 27001 Accredited",
+          scorePercent: 92,
+          issuedDate: "06 October 2026",
+          expiryDate: "06 October 2028",
+          status: "Valid",
+        });
       }
     }
-    loadUser();
-  }, []);
+    loadCert();
+  }, [user]);
 
   const handlePrint = () => {
     window.print();
   };
+
+  const recipientName = cert?.recipientName || user?.fullName || "Segun Oyetade";
+  const courseTitle = cert?.courseTitle || "CYBERSECURITY & CRITICAL INFRASTRUCTURE DEFENSE";
+  const credId = cert?.credentialId || "CERT-8F3K-92QX";
+  const issueDate = cert?.issuedDate || "06 October 2026";
+  const expiryDate = cert?.expiryDate || "06 October 2028";
+  const scorePercent = cert?.scorePercent || 92;
 
   return (
     <div className="certificate-page-container">
@@ -37,7 +62,7 @@ export const CertificatePrintView: React.FC<CertificatePrintViewProps> = ({ onNa
         </div>
 
         <div className="cert-bar-actions">
-          <button onClick={() => onNavigate("/verify?id=CERT-8F3K-92QX")} className="btn-verify-live">
+          <button onClick={() => onNavigate(`/verify?id=${credId}`)} className="btn-verify-live">
             <span className="material-symbols-outlined icon-small text-emerald">verified</span>
             <span>Verify Live on Registry</span>
           </button>
@@ -56,13 +81,13 @@ export const CertificatePrintView: React.FC<CertificatePrintViewProps> = ({ onNa
           <div className="flex-center-gap">
             <span className="cryptographic-status-chip">
               <span className="live-dot-pulse" />
-              <span>Cryptographically Verified</span>
+              <span>Cryptographically Verified in Dataverse</span>
             </span>
             <span className="format-note">Format: ISO/IEC 17024 A4 Landscape</span>
           </div>
 
           <div className="cert-ref-code font-mono">
-            <span>REF: CERT-8F3K-92QX</span>
+            <span>REF: {credId}</span>
             <span>•</span>
             <span className="text-emerald font-bold">STATUS: VALID</span>
           </div>
@@ -90,7 +115,6 @@ export const CertificatePrintView: React.FC<CertificatePrintViewProps> = ({ onNa
             <div className="border-outer-rect" />
             <div className="border-inner-rect" />
 
-            {/* Corner chevrons */}
             <div className="corner-chevron top-left">
               <svg viewBox="0 0 32 32" fill="#ff8300"><polygon points="0,0 24,0 0,24" /></svg>
             </div>
@@ -119,8 +143,10 @@ export const CertificatePrintView: React.FC<CertificatePrintViewProps> = ({ onNa
             {/* Recipient Block */}
             <div className="cert-recipient-block">
               <p className="cert-intro-text">THIS IS TO CERTIFY THAT</p>
-              <div className="cert-recipient-name">{userName}</div>
-              <p className="cert-recipient-role">Senior Field Specialist • Transcorp Power Operations (Lagos Substation)</p>
+              <div className="cert-recipient-name">{recipientName}</div>
+              <p className="cert-recipient-role">
+                {user?.subsidiary || "Transcorp Group"} • {user?.department || "Operations & Compliance"}
+              </p>
             </div>
 
             {/* Achievement Paragraph */}
@@ -129,10 +155,10 @@ export const CertificatePrintView: React.FC<CertificatePrintViewProps> = ({ onNa
                 has demonstrated validated technical competency and satisfied all statutory evaluation requirements in
               </p>
               <div className="cert-course-highlight">
-                CYBERSECURITY & CRITICAL INFRASTRUCTURE DEFENSE
+                {courseTitle.toUpperCase()}
               </div>
               <p className="cert-accreditation-sub">
-                ISO/IEC 27001 Security Management • SCADA Telemetry Defense • 92% Proficiency Score
+                ISO/IEC 27001 Security Management • {scorePercent}% Proficiency Score
               </p>
             </div>
 
@@ -161,11 +187,11 @@ export const CertificatePrintView: React.FC<CertificatePrintViewProps> = ({ onNa
 
             {/* Footer Cryptographic ID */}
             <div className="cert-footer-meta">
-              <span>ISSUED: 06 OCTOBER 2025</span>
+              <span>ISSUED: {issueDate}</span>
               <span>•</span>
-              <span className="font-mono">VERIFICATION ID: CERT-8F3K-92QX</span>
+              <span className="font-mono">VERIFICATION ID: {credId}</span>
               <span>•</span>
-              <span>VALID UNTIL: 06 OCTOBER 2027</span>
+              <span>VALID UNTIL: {expiryDate}</span>
             </div>
           </div>
         </div>

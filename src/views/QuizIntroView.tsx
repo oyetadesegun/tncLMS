@@ -1,5 +1,7 @@
-import React, { useState } from "react";
-import { CoursesStore } from "../data/coursesStore";
+import React, { useState, useEffect } from "react";
+import { CoursesStore, type Course } from "../data/coursesStore";
+import { lmsDataService } from "../services/lmsDataService";
+import type { LMSAssessment } from "../services/dataAdapter";
 
 interface QuizIntroViewProps {
   onNavigate: (path: string) => void;
@@ -7,8 +9,46 @@ interface QuizIntroViewProps {
 
 export const QuizIntroView: React.FC<QuizIntroViewProps> = ({ onNavigate }) => {
   const [confirmed, setConfirmed] = useState(true);
-  const courses = CoursesStore.getCourses();
-  const leadCourse = courses.find((c) => c.courseCode.includes("CYBER")) || courses[0];
+  const [assessment, setAssessment] = useState<LMSAssessment | null>(null);
+  const [leadCourse, setLeadCourse] = useState<Course | null>(null);
+
+  useEffect(() => {
+    async function loadAssessment() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const quizId = urlParams.get("id");
+
+      const courses = CoursesStore.getCourses();
+      const course = courses.find((c) => c.courseCode.includes("CYBER")) || courses[0] || null;
+      setLeadCourse(course);
+
+      if (quizId) {
+        const found = await lmsDataService.getAssessmentById(quizId);
+        if (found) {
+          setAssessment(found);
+          return;
+        }
+      }
+
+      // Default assessment
+      const all = await lmsDataService.getAssessments();
+      if (all && all.length > 0) {
+        setAssessment(all[0]);
+      }
+    }
+    loadAssessment();
+  }, []);
+
+  const title = assessment?.title || leadCourse?.linkedAssessmentTitle || "Cybersecurity Awareness & Zero-Trust Defense";
+  const desc = assessment?.description || leadCourse?.description || "Verify your comprehension of credential hygiene, phishing response, and data protection.";
+  const questionsCount = assessment?.questionsCount || 5;
+  const timeLimit = assessment?.timeLimitMinutes || 20;
+  const passMark = assessment?.passMarkPercent || 80;
+  const trainerName = assessment?.trainerName || leadCourse?.trainer.fullName || "Segun Oyetade";
+  const trainerEmail = assessment?.trainerEmail || leadCourse?.trainer.email || "segun.oyetade@transcorpgroup.com";
+  const trainerAvatar = leadCourse?.trainer.avatar || "SO";
+  const targetScope = leadCourse?.audienceScope === "ALL"
+    ? "🌐 Scope: ALL Transcorp Group (All Subsidiaries)"
+    : `🏢 Scope: ${leadCourse?.targetSubsidiary || "Transcorp Power Plc"}`;
 
   return (
     <div className="view-content-centered">
@@ -22,7 +62,7 @@ export const QuizIntroView: React.FC<QuizIntroViewProps> = ({ onNavigate }) => {
           <span>/</span>
           <button onClick={() => onNavigate("/assessments")} className="crumb-btn">Assessments & Quizzes</button>
           <span>/</span>
-          <span className="crumb-current">Cybersecurity Awareness</span>
+          <span className="crumb-current">{title}</span>
         </div>
         <button onClick={() => onNavigate("/")} className="crumb-back-btn">
           <span className="material-symbols-outlined icon-small">arrow_back</span>
@@ -40,7 +80,7 @@ export const QuizIntroView: React.FC<QuizIntroViewProps> = ({ onNavigate }) => {
               <div className="badges-row">
                 <span className="badge-pill badge-primary">
                   <span className="material-symbols-outlined icon-small">security</span>
-                  <span>Mandatory Compliance • Post-Live Assessment</span>
+                  <span>Mandatory Compliance • Cloud Assessment</span>
                 </span>
                 <span className="badge-pill badge-secondary">
                   <span className="material-symbols-outlined icon-tiny">verified_user</span>
@@ -49,33 +89,29 @@ export const QuizIntroView: React.FC<QuizIntroViewProps> = ({ onNavigate }) => {
               </div>
 
               <div>
-                <h1 className="intro-title">Cybersecurity Awareness: Quiz</h1>
-                <p className="intro-description">
-                  Verify your comprehension of modern phishing vectors, enterprise credential hygiene, and immediate incident reporting protocols following the Q4 corporate live webinar.
-                </p>
+                <h1 className="intro-title">{title}</h1>
+                <p className="intro-description">{desc}</p>
               </div>
 
               {/* Facilitator Info */}
               <div className="facilitator-banner">
                 <div className="facilitator-info-group">
                   <div className="trainer-avatar-bubble" style={{ background: "var(--color-primary)" }}>
-                    {leadCourse?.trainer.avatar || "SO"}
+                    {trainerAvatar}
                   </div>
                   <div>
-                    <div className="facilitator-title">
-                      {leadCourse?.audienceScope === "ALL" ? "🌐 Scope: ALL Transcorp Group (All Subsidiaries)" : `🏢 Scope: ${leadCourse?.targetSubsidiary}`}
-                    </div>
+                    <div className="facilitator-title">{targetScope}</div>
                     <div className="facilitator-lead">
-                      Lead Course Trainer: <strong>{leadCourse?.trainer.fullName || "Segun Oyetade"}</strong> ({leadCourse?.trainer.email || "segun.oyetade@transcorpgroup.com"})
+                      Lead Course Trainer: <strong>{trainerName}</strong> ({trainerEmail})
                     </div>
                   </div>
                 </div>
                 <button
-                  onClick={() => alert(`Launching recorded training session facilitated by ${leadCourse?.trainer.fullName || "Segun Oyetade"}...`)}
+                  onClick={() => alert(`Launching recorded training session facilitated by ${trainerName}...`)}
                   className="btn-review-recording"
                 >
                   <span className="material-symbols-outlined icon-small">play_circle</span>
-                  <span>Review Recording (48m)</span>
+                  <span>Review Recording</span>
                 </button>
               </div>
             </div>
@@ -87,15 +123,15 @@ export const QuizIntroView: React.FC<QuizIntroViewProps> = ({ onNavigate }) => {
               <div className="metric-icon-wrap bg-surface-low text-primary">
                 <span className="material-symbols-outlined">format_list_bulleted</span>
               </div>
-              <div className="metric-value-text">10 Questions</div>
-              <div className="metric-sub-text">Single & Scenario choice</div>
+              <div className="metric-value-text">{questionsCount} Questions</div>
+              <div className="metric-sub-text">From Central Question Bank</div>
             </div>
 
             <div className="metric-box">
               <div className="metric-icon-wrap bg-surface-low text-primary">
                 <span className="material-symbols-outlined">timer</span>
               </div>
-              <div className="metric-value-text">15 Minutes</div>
+              <div className="metric-value-text">{timeLimit} Minutes</div>
               <div className="metric-sub-text">Timed continuous run</div>
             </div>
 
@@ -103,8 +139,8 @@ export const QuizIntroView: React.FC<QuizIntroViewProps> = ({ onNavigate }) => {
               <div className="metric-icon-wrap bg-surface-low text-primary">
                 <span className="material-symbols-outlined">award_star</span>
               </div>
-              <div className="metric-value-text">80% Pass Mark</div>
-              <div className="metric-sub-text">8/10 minimum to pass</div>
+              <div className="metric-value-text">{passMark}% Pass Mark</div>
+              <div className="metric-sub-text">Minimum threshold to pass</div>
             </div>
           </div>
 
@@ -118,11 +154,11 @@ export const QuizIntroView: React.FC<QuizIntroViewProps> = ({ onNavigate }) => {
               </div>
               <div className="rule-item">
                 <span className="material-symbols-outlined text-emerald">check_circle</span>
-                <span><strong>Instant Accreditation:</strong> Immediate certificate generation upon passing score of 80%+.</span>
+                <span><strong>Instant Accreditation:</strong> Immediate certificate generation upon passing score of {passMark}%+.</span>
               </div>
               <div className="rule-item">
                 <span className="material-symbols-outlined text-emerald">check_circle</span>
-                <span><strong>Retake Policy:</strong> Maximum 2 retakes permitted within 14 calendar days.</span>
+                <span><strong>Retake Policy:</strong> {assessment?.retakePolicy || "Limited Retakes (3 attempts permitted)"}.</span>
               </div>
             </div>
 
@@ -140,42 +176,12 @@ export const QuizIntroView: React.FC<QuizIntroViewProps> = ({ onNavigate }) => {
             <div className="action-row">
               <button
                 disabled={!confirmed}
-                onClick={() => onNavigate("/quiz/take")}
-                className="btn-start-assessment-primary"
+                onClick={() => onNavigate(`/quiz/take${assessment ? `?id=${assessment.id}` : ""}`)}
+                className="btn-start-quiz"
               >
-                <span>Begin Assessment Now</span>
-                <span className="material-symbols-outlined">arrow_forward</span>
+                <span>Begin Assessment</span>
+                <span className="material-symbols-outlined icon-small">arrow_forward</span>
               </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Sidebar Info */}
-        <div className="quiz-intro-sidebar-col">
-          <div className="accreditation-perks-card">
-            <h4 className="perks-heading">Accreditation Rewards</h4>
-            <div className="perks-list">
-              <div className="perk-row">
-                <span className="material-symbols-outlined text-amber">military_tech</span>
-                <div>
-                  <div className="perk-name">+350 XP Level Award</div>
-                  <div className="perk-desc">Contributes directly to Level 4 promotion</div>
-                </div>
-              </div>
-              <div className="perk-row">
-                <span className="material-symbols-outlined text-primary">workspace_premium</span>
-                <div>
-                  <div className="perk-name">Digital Wallet Badge</div>
-                  <div className="perk-desc">ISO 27001 Cryptographic Certificate</div>
-                </div>
-              </div>
-              <div className="perk-row">
-                <span className="material-symbols-outlined text-secondary">domain</span>
-                <div>
-                  <div className="perk-name">Substation Compliance</div>
-                  <div className="perk-desc">Satisfies statutory grid operator audit</div>
-                </div>
-              </div>
             </div>
           </div>
         </div>

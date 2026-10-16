@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { TRANSCORP_LEARNERS, type TranscorpLearner } from "../data/transcorpUsers";
 import { CoursesStore, type Course } from "../data/coursesStore";
+import { lmsDataService } from "../services/lmsDataService";
 
 interface AdminPeopleViewProps {
   onNavigate: (path: string) => void;
@@ -8,6 +9,7 @@ interface AdminPeopleViewProps {
 
 export const AdminPeopleView: React.FC<AdminPeopleViewProps> = ({ onNavigate }) => {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [staffList, setStaffList] = useState<TranscorpLearner[]>(TRANSCORP_LEARNERS);
   const [search, setSearch] = useState("");
   const [selectedSubsidiary, setSelectedSubsidiary] = useState("ALL");
   const [roleFilter, setRoleFilter] = useState<"ALL" | "TRAINER" | "LEARNER">("ALL");
@@ -19,6 +21,9 @@ export const AdminPeopleView: React.FC<AdminPeopleViewProps> = ({ onNavigate }) 
 
   useEffect(() => {
     const unsub = CoursesStore.subscribe((c) => setCourses(c));
+    lmsDataService.getUsers().then((u) => {
+      if (u && u.length > 0) setStaffList(u);
+    }).catch(() => {});
     return unsub;
   }, []);
 
@@ -35,7 +40,7 @@ export const AdminPeopleView: React.FC<AdminPeopleViewProps> = ({ onNavigate }) 
     trainerCourseMap.set(c.trainer.id, existing);
   });
 
-  const filteredStaff = TRANSCORP_LEARNERS.filter((s) => {
+  const filteredStaff = staffList.filter((s) => {
     const matchesSearch =
       !search ||
       s.fullName.toLowerCase().includes(search.toLowerCase()) ||

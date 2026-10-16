@@ -1,72 +1,7 @@
-import React, { useState, useEffect } from "react";
-
-interface Question {
-  id: number;
-  question: string;
-  scenario?: string;
-  options: string[];
-  correct: number;
-}
-
-const QUESTIONS: Question[] = [
-  {
-    id: 1,
-    question: "You receive an email from 'it-support@transcorpgroup-security.com' requesting an urgent MFA token reset. What is the correct protocol?",
-    scenario: "Urgent email alert received during active shifts requesting emergency credential input.",
-    options: [
-      "Reply with the 6-digit authenticator code immediately to prevent account lock.",
-      "Click the link to verify if the certificate on the webpage is valid.",
-      "Flag as phishing via the Transcorp Outlook plugin and alert the SOC helpline.",
-      "Forward the email to team colleagues to verify if they received it too."
-    ],
-    correct: 2,
-  },
-  {
-    id: 2,
-    question: "When connecting a portable USB drive into a SCADA substation control terminal, what policy applies?",
-    scenario: "Field engineer needing to transfer firmware patch to high-voltage breaker unit.",
-    options: [
-      "Any enterprise-encrypted USB drive is authorized without prior scanning.",
-      "Air-gapped systems prohibit unauthorized external media; devices must be vetted via the IT kiosk.",
-      "External media is permitted if formatted with NTFS and password protected.",
-      "Only drives under 16GB capacity may be connected without supervisor approval."
-    ],
-    correct: 1,
-  },
-  {
-    id: 3,
-    question: "Which of the following constitutes an immediate Severity 1 incident under Transcorp Information Security standard?",
-    options: [
-      "A failed login attempt on a non-production test laptop.",
-      "Scheduled reboot of an internal file repository server.",
-      "Unsanctioned lateral movement detected across substation telemetry networks.",
-      "Delayed delivery of external marketing newsletters."
-    ],
-    correct: 2,
-  },
-  {
-    id: 4,
-    question: "What is the minimum recommended length and complexity for Transcorp privileged executive credentials?",
-    options: [
-      "8 characters with numbers only.",
-      "10 characters with standard alphanumeric sequence.",
-      "16+ characters utilizing passphrase entropy and mandatory hardware token MFA.",
-      "12 characters changed once every 3 years."
-    ],
-    correct: 2,
-  },
-  {
-    id: 5,
-    question: "If an unexpected browser prompt asks to accept an untrusted root SSL certificate when loading internal dashboards, you should:",
-    options: [
-      "Accept the risk and proceed to bypass the warning.",
-      "Terminate the session immediately and submit an alert to enterprise security.",
-      "Disable the browser warning in developer settings.",
-      "Clear browser cookies and retry repeatedly."
-    ],
-    correct: 1,
-  },
-];
+import React, { useState, useEffect, useCallback } from "react";
+import { lmsDataService } from "../services/lmsDataService";
+import type { LMSQuestion } from "../services/dataAdapter";
+import { useAuth } from "../context/AuthContext";
 
 interface QuizTakeViewProps {
   onNavigate: (path: string) => void;
@@ -74,32 +9,66 @@ interface QuizTakeViewProps {
 }
 
 export const QuizTakeView: React.FC<QuizTakeViewProps> = ({ onNavigate, onRecordAttempt }) => {
+  const { user } = useAuth();
+  const [questions, setQuestions] = useState<LMSQuestion[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, number>>({});
-  const [flagged, setFlagged] = useState<Record<number, boolean>>({});
-  const [secondsLeft, setSecondsLeft] = useState(14 * 60 + 45); // 14m 45s
+  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [flagged, setFlagged] = useState<Record<string, boolean>>({});
+  const [secondsLeft, setSecondsLeft] = useState(15 * 60);
 
-  const handleSubmit = React.useCallback(() => {
+  useEffect(() => {
+    let isMounted = true;
+    async function loadQuestions() {
+      setIsLoading(true);
+      const data = await lmsDataService.getQuestions();
+      if (isMounted) {
+        setQuestions(data);
+        setIsLoading(false);
+      }
+    }
+    loadQuestions();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleSubmit = useCallback(async () => {
+    if (questions.length === 0) return;
+
     let correctCount = 0;
-    QUESTIONS.forEach((q) => {
-      if (answers[q.id] === q.correct) {
+    questions.forEach((q) => {
+      const selectedOptIdx = answers[q.id];
+      if (selectedOptIdx !== undefined && q.options[selectedOptIdx]?.isCorrect) {
         correctCount += 1;
       }
     });
 
-    const score = Math.round((correctCount / QUESTIONS.length) * 100);
+    const score = Math.round((correctCount / questions.length) * 100);
     const passed = score >= 80;
+
+    // Record attempt to cloud Dataverse
+    await lmsDataService.recordAttempt({
+      quizId: "quiz-cyber",
+      quizTitle: "Cybersecurity & Critical Infrastructure Defense",
+      userEmail: user?.email || "segun.oyetade@transcorpgroup.com",
+      userName: user?.fullName || "Segun Oyetade",
+      scorePercent: score,
+      passed,
+      dateCompleted: new Date().toISOString(),
+      answers,
+    }).catch(() => {});
 
     if (onRecordAttempt) {
       onRecordAttempt(score, passed);
     }
 
     if (passed) {
-      onNavigate(`/quiz/results/passed?score=${score}&correct=${correctCount}&total=${QUESTIONS.length}`);
+      onNavigate(`/quiz/results/passed?score=${score}&correct=${correctCount}&total=${questions.length}`);
     } else {
-      onNavigate(`/quiz/results/review?score=${score}&correct=${correctCount}&total=${QUESTIONS.length}`);
+      onNavigate(`/quiz/results/review?score=${score}&correct=${correctCount}&total=${questions.length}`);
     }
-  }, [answers, onNavigate, onRecordAttempt]);
+  }, [answers, questions, user, onNavigate, onRecordAttempt]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -115,7 +84,35 @@ export const QuizTakeView: React.FC<QuizTakeViewProps> = ({ onNavigate, onRecord
     return () => clearInterval(timer);
   }, [handleSubmit]);
 
-  const currentQ = QUESTIONS[currentIdx];
+  if (isLoading) {
+    return (
+      <div className="view-content-centered" style={{ padding: "60px", textAlign: "center" }}>
+        <span className="material-symbols-outlined icon-spin" style={{ fontSize: "36px", color: "var(--tnc-orange)" }}>
+          sync
+        </span>
+        <p style={{ marginTop: "16px", fontWeight: 600 }}>Loading assessment questions from cloud...</p>
+      </div>
+    );
+  }
+
+  if (questions.length === 0) {
+    return (
+      <div className="view-content-centered" style={{ padding: "60px", textAlign: "center" }}>
+        <span className="material-symbols-outlined" style={{ fontSize: "48px", color: "var(--tnc-slate-400)" }}>
+          quiz
+        </span>
+        <h3 style={{ margin: "16px 0 8px" }}>No questions available</h3>
+        <p style={{ color: "var(--tnc-slate-500)", marginBottom: "20px" }}>
+          This assessment currently has no questions configured in the question bank.
+        </p>
+        <button onClick={() => onNavigate("/")} className="btn-primary-action">
+          Return Home
+        </button>
+      </div>
+    );
+  }
+
+  const currentQ = questions[currentIdx] || questions[0];
 
   const handleSelectOption = (optIdx: number) => {
     setAnswers((prev) => ({ ...prev, [currentQ.id]: optIdx }));
@@ -154,7 +151,7 @@ export const QuizTakeView: React.FC<QuizTakeViewProps> = ({ onNavigate, onRecord
         <div className="quiz-take-question-col">
           <div className="question-display-card">
             <div className="question-card-top-bar">
-              <span className="question-seq-text">Question {currentIdx + 1} of {QUESTIONS.length}</span>
+              <span className="question-seq-text">Question {currentIdx + 1} of {questions.length}</span>
               <button onClick={toggleFlag} className={`btn-flag-question ${flagged[currentQ.id] ? "is-flagged" : ""}`}>
                 <span className="material-symbols-outlined icon-small">
                   {flagged[currentQ.id] ? "flag" : "outlined_flag"}
@@ -170,21 +167,21 @@ export const QuizTakeView: React.FC<QuizTakeViewProps> = ({ onNavigate, onRecord
               </div>
             )}
 
-            <h2 className="live-question-stem">{currentQ.question}</h2>
+            <h2 className="live-question-stem">{currentQ.questionText}</h2>
 
             {/* Answer Options */}
             <div className="live-options-stack">
-              {currentQ.options.map((optText, optIdx) => {
+              {currentQ.options.map((opt, optIdx) => {
                 const isSelected = answers[currentQ.id] === optIdx;
                 const letter = String.fromCharCode(65 + optIdx);
                 return (
                   <button
-                    key={optIdx}
+                    key={opt.id || optIdx}
                     onClick={() => handleSelectOption(optIdx)}
                     className={`live-option-btn ${isSelected ? "selected" : ""}`}
                   >
                     <div className="option-letter-badge">{letter}</div>
-                    <span className="option-text-label">{optText}</span>
+                    <span className="option-text-label">{opt.text}</span>
                   </button>
                 );
               })}
@@ -201,7 +198,7 @@ export const QuizTakeView: React.FC<QuizTakeViewProps> = ({ onNavigate, onRecord
                 <span>Previous</span>
               </button>
 
-              {currentIdx < QUESTIONS.length - 1 ? (
+              {currentIdx < questions.length - 1 ? (
                 <button
                   onClick={() => setCurrentIdx((prev) => prev + 1)}
                   className="btn-quiz-next"
@@ -224,7 +221,7 @@ export const QuizTakeView: React.FC<QuizTakeViewProps> = ({ onNavigate, onRecord
           <div className="palette-card">
             <h4 className="palette-title">Question Palette</h4>
             <div className="palette-grid">
-              {QUESTIONS.map((q, idx) => {
+              {questions.map((q, idx) => {
                 const isAnswered = answers[q.id] !== undefined;
                 const isCurrent = currentIdx === idx;
                 const isFlag = flagged[q.id];
@@ -248,7 +245,7 @@ export const QuizTakeView: React.FC<QuizTakeViewProps> = ({ onNavigate, onRecord
               </div>
               <div className="legend-item">
                 <span className="legend-box unattempted" />
-                <span>Remaining ({QUESTIONS.length - Object.keys(answers).length})</span>
+                <span>Remaining ({questions.length - Object.keys(answers).length})</span>
               </div>
               <div className="legend-item">
                 <span className="legend-box flagged" />

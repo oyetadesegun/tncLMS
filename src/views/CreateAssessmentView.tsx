@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { CoursesStore, type Course } from "../data/coursesStore";
 import { NotificationService } from "../data/notificationService";
 import { generateAssessmentBuilderLink } from "../data/notificationService";
+import { lmsDataService } from "../services/lmsDataService";
 
 interface CreateAssessmentViewProps {
   onNavigate: (path: string) => void;
@@ -125,6 +126,42 @@ export const CreateAssessmentView: React.FC<CreateAssessmentViewProps> = ({ onNa
     if (!selectedCourse) return;
     setIsSubmitting(true);
     try {
+      // 1. Persist the assessment to Dataverse cloud
+      await lmsDataService.createAssessment({
+        title: title.trim() || `${selectedCourse.title} Assessment`,
+        description: selectedCourse.description,
+        category: selectedCourse.category,
+        status: "Active",
+        passMarkPercent: Number(passMark) || 80,
+        timeLimitMinutes: Number(timeLimit) || 20,
+        questionsCount: questions.length,
+        cohort: audienceScope === "ALL" ? "ALL Transcorp Group" : unit,
+        retakePolicy: attemptsAllowed === "99" ? "Unlimited Retakes" : `Limited Retakes (${attemptsAllowed} attempts)`,
+        maxAttempts: Number(attemptsAllowed) || 3,
+        certificateEnabled: true,
+        trainerName: selectedCourse.trainer.fullName,
+        trainerEmail: selectedCourse.trainer.email,
+        createdOn: new Date().toISOString().slice(0, 10),
+      });
+
+      // 2. Persist all authored questions into Central Question Bank (Dataverse)
+      for (const q of questions) {
+        if (q.stem.trim()) {
+          await lmsDataService.createQuestion({
+            questionText: q.stem.trim(),
+            difficulty: "Medium",
+            category: selectedCourse.category,
+            explanation: q.explanation || "Curriculum assessment question.",
+            options: q.options.map((optText, oi) => ({
+              id: `opt-${Date.now()}-${oi}`,
+              text: optText,
+              isCorrect: q.correctIndex === oi,
+            })),
+          }).catch(() => {});
+        }
+      }
+
+      // 3. Notify HR admin
       await NotificationService.notifyTrainerSubmission(selectedCourse, questions.length);
       setSubmittedSuccessfully(true);
     } catch {
